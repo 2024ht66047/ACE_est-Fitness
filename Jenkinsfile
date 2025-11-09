@@ -3,11 +3,7 @@ pipeline {
     agent {
         // Use a dedicated agent or Docker container with Python pre-installed.
         // A standard Python Docker image is highly recommended for stability.
-        docker {
-            image 'python:3.11-slim' 
-            // Ensures dependencies installed inside the container are available later
-            alwaysPull true 
-        }
+        any
     }
 
     parameters {

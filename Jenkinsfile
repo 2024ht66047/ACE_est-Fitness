@@ -1,10 +1,6 @@
 // Use a Declarative Pipeline syntax
 pipeline {
-    agent {
-        // Use a dedicated agent or Docker container with Python pre-installed.
-        // A standard Python Docker image is highly recommended for stability.
-        any
-    }
+    agent any
 
     parameters {
         // Allows setting the specific version number for the built artifact

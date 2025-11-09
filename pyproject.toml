@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_package"
+version = "0.1.0"
+description = "DevOps Project for ACE_est Fitness"
+authors = [
+    {name = "Paneendar P", email = "2024ht66047@wilp.bits-pilani.ac.in"},
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    # Add your project's runtime dependencies here
+]
+
+# Development dependencies for testing and linting
+[project.optional-dependencies]
+dev = [
+    "pylint>=2.17.0",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+# --- Pytest Configuration ---
+[tool.pytest.ini_options]
+# Set the root for test discovery
+rootdir = "."
+# Directories to search for tests
+testpaths = "tests"
+# Default command-line options: show verbose output and report a summary of test status
+addopts = "-v --cov=src.my_package --cov-report=term-missing"
+# Ignore certain directories during test discovery
+norecursedirs = [".git", ".venv", "dist", "build"]
+
+# --- Pylint Configuration ---
+[tool.pylint]
+# The Python version to check against
+py-version = "3.8"
+# Files and directories to check
+# Disable specific checks (optional, customize as needed)
+disable = [
+    "C0114", # Missing module docstring
+    "C0115", # Missing class docstring
+    "C0116", # Missing function or method docstring
+]
+# Max number of members in a class
+max-attributes = 10
+# Maximum line length
+max-line-length = 100

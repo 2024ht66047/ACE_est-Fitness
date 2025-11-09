@@ -3,6 +3,7 @@ pipeline {
     agent {
     docker {
         image 'python:3.11-slim' 
+        args '-w /home/jenkins/workspace'
     }
 }
     parameters {

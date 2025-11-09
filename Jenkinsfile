@@ -1,7 +1,10 @@
 // Use a Declarative Pipeline syntax
 pipeline {
-    agent any
-
+    agent {
+    docker {
+        image 'python:3.11-slim' 
+    }
+}
     parameters {
         // Allows setting the specific version number for the built artifact
         string(name: 'APP_VERSION', defaultValue: '1.0.0', description: 'The version to stamp on the Python package.')

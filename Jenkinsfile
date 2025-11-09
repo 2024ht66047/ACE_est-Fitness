@@ -1,101 +1,64 @@
-// Jenkinsfile (Declarative Pipeline)
-// This pipeline executes a standard CI/CD flow with Python-specific build steps
-// and archives the build artifacts upon success.
-
+// Use a Declarative Pipeline syntax
 pipeline {
-    agent any
+    agent {
+        // Use a dedicated agent or Docker container with Python pre-installed.
+        // A standard Python Docker image is highly recommended for stability.
+        docker {
+            image 'python:3.11-slim' 
+            // Ensures dependencies installed inside the container are available later
+            alwaysPull true 
+        }
+    }
 
-    // Environment variables used throughout the pipeline
-    environment {
-        // Specify the Python version/interpreter if needed
-        PYTHON_VERSION = 'python3' 
-        ARTIFACT_DIR = 'dist'
+    parameters {
+        // Allows setting the specific version number for the built artifact
+        string(name: 'APP_VERSION', defaultValue: '1.0.0', description: 'The version to stamp on the Python package.')
     }
 
     stages {
-        
-        // --- Stage 1: Build & Package Python Application ---
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                echo "Building application on branch: ${env.BRANCH_NAME}"
-                
-                // 1. Setup Virtual Environment (Recommended practice)
-                sh "${env.PYTHON_VERSION} -m venv venv"
-                sh 'source venv/bin/activate'
-                
-                // 2. Install dependencies (assuming requirements.txt exists)
-                sh 'pip install --upgrade pip'
-                sh 'pip install -r requirements.txt'
-                
-                // 3. Build the distribution package (requires 'setuptools' and 'wheel')
-                // This creates files in the 'dist' directory (e.g., .whl, .tar.gz)
-                sh 'pip install setuptools wheel'
-                sh "${env.PYTHON_VERSION} setup.py sdist bdist_wheel"
-                
-                echo "Python package successfully built into the ${env.ARTIFACT_DIR} directory."
+                // Ensure we start with a clean copy of the code
+                checkout scm
             }
         }
 
-        // --- Stage 2: Test ---
-        stage('Test') {
+        stage('Setup Environment & Test') {
             steps {
-                echo 'Running unit tests...'
-                // Run tests using the virtual environment
-                sh 'source venv/bin/activate'
-                sh 'pytest' // Assuming you use pytest, change this to your test runner
+                sh 'echo "Building version ${params.APP_VERSION}"'
+                
+                // 1. Install dependencies into a virtual environment (best practice)
+                sh 'python -m venv venv'
+                sh '. venv/bin/activate && pip install --upgrade pip setuptools wheel'
+                sh '. venv/bin/activate && pip install -r requirements.txt'
+                
+                // 2. Run your tests (e.g., using pytest)
+                sh '. venv/bin/activate && pytest' 
             }
-            post {
-                // Archive test reports if they are generated
-                always {
-                    junit '**/test-reports/*.xml'
+        }
+
+        stage('Build Package') {
+            steps {
+                // 3. Build the distributable package (e.g., a wheel .whl file)
+                // The version should be configured in your setup.py to use the ${params.APP_VERSION}
+                sh '. venv/bin/activate && python setup.py sdist bdist_wheel'
+                
+                // Find the uniquely named wheel file created by the build process
+                script {
+                    def wheelFile = sh(returnStdout: true, script: "ls dist/*.whl").trim()
+                    // Store the actual filename for archiving later
+                    env.ARTIFACT_FILE = wheelFile
+                    echo "Generated artifact: ${env.ARTIFACT_FILE}"
                 }
             }
         }
 
-        // --- Stage 3: Deploy to DEV/Staging (Runs on feature/develop branches) ---
-        stage('Deploy to DEV/Staging') {
-            when {
-                not {
-                    branch 'main' 
-                }
-            }
+        stage('Archive Artifact') {
             steps {
-                echo "Deploying branch ${env.BRANCH_NAME} to the Staging environment."
-                sh './scripts/deploy_staging.sh'
+                // 4. Archive the unique artifact using the name determined in the previous stage
+                archiveArtifacts artifacts: 'dist/*.whl', fingerprint: true
+                sh 'echo "Artifact archived: ${env.ARTIFACT_FILE}"'
             }
-        }
-
-        // --- Stage 4: Deploy to Production (Runs ONLY on the main branch) ---
-        stage('Deploy to Production') {
-            when {
-                branch 'main'
-            }
-            steps {
-                echo '🚀 Deploying the main branch to Production!'
-                // In a real scenario, this would deploy the archived artifact
-                sh './scripts/deploy_production.sh'
-            }
-            options {
-                input(message: 'Proceed with Production Deployment?', ok: 'Deploy')
-            }
-        }
-    }
-    
-    // 3. Post: Actions that run after all stages.
-    post {
-        always {
-            // Clean the workspace, including the venv
-            cleanWs() 
-        }
-        success {
-            echo 'Pipeline finished successfully! Archiving artifacts...'
-            // *** Archiving the Python built files from the 'dist' directory ***
-            archiveArtifacts artifacts: "${env.ARTIFACT_DIR}/**", fingerprint: true
-            
-            // Add notification steps here (e.g., Slack, Email)
-        }
-        failure {
-            echo "Pipeline failed on branch: ${env.BRANCH_NAME}!"
         }
     }
 }

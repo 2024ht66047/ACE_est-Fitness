@@ -1,107 +1,77 @@
-// This pipeline uses a declarative syntax suitable for Multibranch Pipeline jobs.
+// Jenkinsfile (Declarative Pipeline)
+
 pipeline {
-    // 1. Define the build environment using a Docker image.
-    // This ensures your build environment is clean and consistent across agents.
-    agent { 
-        docker { 
-            image 'python:3.10-slim'
-            args '-u root' // Needed sometimes if Jenkins user lacks permissions inside the container
-        }
-    }
-
-    // 2. Define environment variables. These are crucial for SonarQube identification.
-    environment {
-        // --- SONARQUBE CONFIGURATION ---
-        // These variables MUST be customized to match your Jenkins and SonarQube setup.
-        
-        // This key will uniquely identify the project in SonarQube.
-        // JOB_NAME is a built-in variable that works well for multi-branch environments.
-        SONAR_PROJECT_KEY = "python-app-${JOB_NAME.replaceAll('%2F', '-')}"
-        
-        // This name must match the tool configuration in Manage Jenkins > Global Tool Configuration.
-        SONAR_SCANNER_NAME = "ACE_estFitness_SonarQube" 
-        
-        // This name must match the server configuration in Manage Jenkins > Configure System.
-        SONAR_SERVER_NAME = "SonarQube_Jenkins" 
-    }
-
-    // Define post-build actions, regardless of stage success/failure
-    post {
-        // Clean up the workspace to free up disk space
-        always {
-            cleanWs()
-        }
-    }
-
+    agent any
     stages {
-        stage('Setup Environment') {
+        
+        // --- Build ---
+        stage('Build') {
             steps {
-                echo 'Installing Python dependencies...'
-                // Install core dependencies
-                sh 'pip install -r requirements.txt'
-                // Install testing/coverage dependencies needed for analysis reports
-                sh 'pip install pytest pytest-cov'
+                echo "Building application on branch: ${env.BRANCH_NAME}"
+                // Replace with your actual build command (e.g., mvn clean install, npm run build)
+                sh 'echo "Running build process..."'
             }
         }
 
-        stage('Run Unit Tests & Coverage') {
+        // --- Test ---
+        stage('Test') {
             steps {
-                echo 'Running tests and generating coverage reports...'
-                // Create a directory for reports
-                sh 'mkdir -p reports'
-                
-                // Run tests:
-                // --junitxml: Generates XML report for test results (used by SonarQube)
-                // --cov=src: Measures coverage for the 'src' directory (change if needed)
-                // --cov-report=xml: Generates XML coverage report (used by SonarQube)
-                sh 'pytest --junitxml=reports/unit_results.xml --cov=src/ --cov-report=xml:reports/coverage.xml tests/'
+                echo 'Running unit tests...'
+                // Replace with your actual test command (e.g., mvn test, npm test)
+                sh 'echo "Running tests..."'
             }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                echo "Starting SonarQube analysis for branch: ${BRANCH_NAME}"
-                
-                // The withSonarQubeEnv step injects the necessary credentials and URL
-                // defined in the Jenkins global configuration.
-                withSonarQubeEnv(installationName: env.SONAR_SERVER_NAME) {
-                    
-                    // Execute the SonarScanner CLI
-                    sh "${tool env.SONAR_SCANNER_NAME}/bin/sonar-scanner " +
-                        "-Dsonar.projectKey=${env.SONAR_PROJECT_KEY} " +
-                        "-Dsonar.projectName=${env.SONAR_PROJECT_KEY} " +
-                        "-Dsonar.sources=src " +
-                        "-Dsonar.tests=tests " +
-                        // Specify the location of the coverage report generated in the previous stage
-                        "-Dsonar.python.coverage.reportPaths=reports/coverage.xml " +
-                        // Specify the location of the JUnit test results
-                        "-Dsonar.junit.reportPaths=reports/unit_results.xml " +
-                        // Pass the branch name (automatic in Multi-branch, but good practice)
-                        "-Dsonar.branch.name=${env.BRANCH_NAME}"
+            // Optional: You can configure JUnit or other report collection here
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
 
-        stage('Quality Gate Check') {
-            steps {
-                echo 'Waiting for SonarQube Quality Gate status...'
-                // Wait up to 5 minutes for SonarQube to finish processing and send the status back.
-                // If the Quality Gate is not green, abortPipeline: true will fail the build.
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
-        stage('Deploy (Example)') {
+        // --- Deploy to Staging/Development (Runs on feature/develop branches) ---
+        stage('Deploy to DEV/Staging') {
+            // Conditional Execution: This stage runs ONLY if the branch is NOT 'main'
             when {
-                // This stage only runs if the branch is 'main' AND the Quality Gate passed.
+                not {
+                    branch 'main' 
+                }
+            }
+            steps {
+                echo "Deploying branch ${env.BRANCH_NAME} to the Staging environment."
+                // Replace with your staging deployment script/command
+                sh './scripts/deploy_staging.sh'
+            }
+        }
+
+        // --- Deploy to Production (Runs ONLY on the main branch) ---
+        stage('Deploy to Production') {
+            // Conditional Execution: This stage runs ONLY if the branch name is exactly 'main'
+            when {
                 branch 'main'
             }
             steps {
-                echo "Code is clean and ready for production deployment from ${BRANCH_NAME}!"
-                // sh './deploy.sh'
+                echo '🚀 Deploying the main branch to Production!'
+                // Replace with your production deployment script/command
+                sh './scripts/deploy_production.sh'
             }
+            // Optional: Add a manual approval gate before production deployment
+            options {
+                input(message: 'Proceed with Production Deployment?', ok: 'Deploy')
+            }
+        }
+    }
+    
+    // Actions that run after all stages, regardless of success or failure.
+    post {
+        always {
+            cleanWs() // Always clean the workspace to free up disk space
+        }
+        success {
+            echo 'Pipeline finished successfully!'
+            // Add notification steps here (e.g., Slack, Email)
+        }
+        failure {
+            echo "Pipeline failed on branch: ${env.BRANCH_NAME}!"
         }
     }
 }

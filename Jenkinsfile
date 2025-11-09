@@ -72,11 +72,12 @@ pipeline {
             }
             steps {
                 echo '🚀 Deploying the main branch to Production!'
+                 input(message: 'Proceed with Production Deployment?', ok: 'Deploy')
                 // In a real scenario, this would deploy the archived artifact
                 sh './scripts/deploy_production.sh'
             }
             options {
-                input(message: 'Proceed with Production Deployment?', ok: 'Deploy')
+               timeout(time: 15, unit: 'MINUTES')
             }
         }
     }

@@ -1,77 +1,89 @@
-// Jenkinsfile (Declarative Pipeline)
+// This Jenkinsfile must be placed in the root directory of your Git repository.
+// It uses a Declarative Pipeline syntax, optimized for a Python project.
 
 pipeline {
+    // Removed the failing 'tools' directive and the 'docker' agent.
     agent any
+
+    // Environment variables can define key parameters like the virtual environment path
+    environment {
+        // Defines the name of the virtual environment directory
+        VENV_DIR = '.venv'
+    }
+
+    // Triggers: Defines how the pipeline should be started.
+    triggers {
+        // SCM polling ensures a check for changes at regular intervals.
+        // The actual schedule is configured in the Jenkins Job UI.
+        pollSCM('')
+    }
+
+    // Stages: The main steps of your CI/CD process.
     stages {
-        
-        // --- Build ---
-        stage('Build') {
+        stage('Checkout Code') {
             steps {
-                echo "Building application on branch: ${env.BRANCH_NAME}"
-                // Replace with your actual build command (e.g., mvn clean install, npm run build)
-                sh 'echo "Running build process..."'
-            }
-        }
-
-        // --- Test ---
-        stage('Test') {
-            steps {
-                echo 'Running unit tests...'
-                // Replace with your actual test command (e.g., mvn test, npm test)
-                sh 'echo "Running tests..."'
-            }
-            // Optional: You can configure JUnit or other report collection here
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
+                echo 'Checking out code from the repository...'
+                script {
+                    checkout scm
                 }
             }
         }
 
-        // --- Deploy to Staging/Development (Runs on feature/develop branches) ---
-        stage('Deploy to DEV/Staging') {
-            // Conditional Execution: This stage runs ONLY if the branch is NOT 'main'
-            when {
-                not {
-                    branch 'main' 
-                }
-            }
+        stage('Install Dependencies') {
             steps {
-                echo "Deploying branch ${env.BRANCH_NAME} to the Staging environment."
-                // Replace with your staging deployment script/command
-                sh './scripts/deploy_staging.sh'
+                echo 'Setting up Python virtual environment and installing dependencies...'
+                // FIX: Changed 'python' to 'python3' as this is often the correct executable name.
+                // If this fails again, you will need to replace 'python3' with the absolute path
+                // of the Python executable on your Jenkins build agent (e.g., /usr/bin/python3).
+                sh 'python3 -m venv ${VENV_DIR}'
+                sh '. ${VENV_DIR}/bin/activate && pip install --upgrade pip'
+                // Install project dependencies from requirements.txt
+                sh '. ${VENV_DIR}/bin/activate && pip install -r requirements.txt'
             }
         }
 
-        // --- Deploy to Production (Runs ONLY on the main branch) ---
-        stage('Deploy to Production') {
-            // Conditional Execution: This stage runs ONLY if the branch name is exactly 'main'
+        stage('Lint and Quality Check') {
+            steps {
+                echo 'Running static analysis using Pylint...'
+                sh '. ${VENV_DIR}/bin/activate && pylint **/*.py || true' 
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Executing unit and integration tests (e.g., pytest)...'
+                // Assuming 'pytest' is included in your requirements.txt
+                sh '. ${VENV_DIR}/bin/activate && pytest'
+            }
+        }
+
+        stage('Deploy (main branch only)') {
+            // When: Only execute this stage if the current branch is 'main'
             when {
                 branch 'main'
             }
             steps {
-                echo '🚀 Deploying the main branch to Production!'
-                // Replace with your production deployment script/command
-                sh './scripts/deploy_production.sh'
-            }
-            // Optional: Add a manual approval gate before production deployment
-            options {
-                input(message: 'Proceed with Production Deployment?', ok: 'Deploy')
+                echo "Deploying the built Python application or library..."
+                // Placeholder for deployment commands:
+                // Ensure activation is used for deployment steps that require VENV tools
+                sh '. ${VENV_DIR}/bin/activate && echo "Running deployment script..."'
+                // Example: sh '. ${VENV_DIR}/bin/activate && ansible-playbook deploy.yml'
             }
         }
     }
-    
-    // Actions that run after all stages, regardless of success or failure.
+
+    // Post: Actions that run after the Pipeline has finished.
     post {
         always {
-            cleanWs() // Always clean the workspace to free up disk space
+            echo 'Pipeline job finished.'
         }
         success {
-            echo 'Pipeline finished successfully!'
-            // Add notification steps here (e.g., Slack, Email)
+            echo 'Python Build, Quality Check, and Tests succeeded!'
+            // Add notification logic
         }
         failure {
-            echo "Pipeline failed on branch: ${env.BRANCH_NAME}!"
+            echo 'Python Build failed! Review the logs.'
+            // Add notification logic
         }
     }
 }

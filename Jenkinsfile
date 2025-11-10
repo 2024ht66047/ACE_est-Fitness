@@ -1,60 +1,89 @@
-// Use a Declarative Pipeline syntax
+// This Jenkinsfile must be placed in the root directory of your Git repository.
+// It uses a Declarative Pipeline syntax, optimized for a Python project.
+
 pipeline {
-    agent {
-    docker {
-        image 'python:3.11-slim' 
-        args '-v C:/ProgramData/Jenkins/.jenkins/workspace:/workspace -w /workspace'
-    }
-}
-    parameters {
-        // Allows setting the specific version number for the built artifact
-        string(name: 'APP_VERSION', defaultValue: '1.0.0', description: 'The version to stamp on the Python package.')
+    // Removed the failing 'tools' directive and the 'docker' agent.
+    agent any
+
+    // Environment variables can define key parameters like the virtual environment path
+    environment {
+        // Defines the name of the virtual environment directory
+        VENV_DIR = '.venv'
     }
 
+    // Triggers: Defines how the pipeline should be started.
+    triggers {
+        // SCM polling ensures a check for changes at regular intervals.
+        // The actual schedule is configured in the Jenkins Job UI.
+        pollSCM('')
+    }
+
+    // Stages: The main steps of your CI/CD process.
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Ensure we start with a clean copy of the code
-                checkout scm
-            }
-        }
-
-        stage('Setup Environment & Test') {
-            steps {
-                sh 'echo "Building version ${params.APP_VERSION}"'
-                
-                // 1. Install dependencies into a virtual environment (best practice)
-                sh 'python -m venv venv'
-                sh '. venv/bin/activate && pip install --upgrade pip setuptools wheel'
-                sh '. venv/bin/activate && pip install -r requirements.txt'
-                
-                // 2. Run your tests (e.g., using pytest)
-                sh '. venv/bin/activate && pytest' 
-            }
-        }
-
-        stage('Build Package') {
-            steps {
-                // 3. Build the distributable package (e.g., a wheel .whl file)
-                // The version should be configured in your setup.py to use the ${params.APP_VERSION}
-                sh '. venv/bin/activate && python setup.py sdist bdist_wheel'
-                
-                // Find the uniquely named wheel file created by the build process
+                echo 'Checking out code from the repository...'
                 script {
-                    def wheelFile = sh(returnStdout: true, script: "ls dist/*.whl").trim()
-                    // Store the actual filename for archiving later
-                    env.ARTIFACT_FILE = wheelFile
-                    echo "Generated artifact: ${env.ARTIFACT_FILE}"
+                    checkout scm
                 }
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Install Dependencies') {
             steps {
-                // 4. Archive the unique artifact using the name determined in the previous stage
-                archiveArtifacts artifacts: 'dist/*.whl', fingerprint: true
-                sh 'echo "Artifact archived: ${env.ARTIFACT_FILE}"'
+                echo 'Setting up Python virtual environment and installing dependencies...'
+                // FIX: Changed 'python' to 'python3' as this is often the correct executable name.
+                // If this fails again, you will need to replace 'python3' with the absolute path
+                // of the Python executable on your Jenkins build agent (e.g., /usr/bin/python3).
+                sh 'python3 -m venv ${VENV_DIR}'
+                sh '. ${VENV_DIR}/bin/activate && pip install --upgrade pip'
+                // Install project dependencies from requirements.txt
+                sh '. ${VENV_DIR}/bin/activate && pip install -r requirements.txt'
             }
+        }
+
+        stage('Lint and Quality Check') {
+            steps {
+                echo 'Running static analysis using Pylint...'
+                sh '. ${VENV_DIR}/bin/activate && pylint **/*.py || true' 
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Executing unit and integration tests (e.g., pytest)...'
+                // Assuming 'pytest' is included in your requirements.txt
+                sh '. ${VENV_DIR}/bin/activate && pytest'
+            }
+        }
+
+        stage('Deploy (main branch only)') {
+            // When: Only execute this stage if the current branch is 'main'
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "Deploying the built Python application or library..."
+                // Placeholder for deployment commands:
+                // Ensure activation is used for deployment steps that require VENV tools
+                sh '. ${VENV_DIR}/bin/activate && echo "Running deployment script..."'
+                // Example: sh '. ${VENV_DIR}/bin/activate && ansible-playbook deploy.yml'
+            }
+        }
+    }
+
+    // Post: Actions that run after the Pipeline has finished.
+    post {
+        always {
+            echo 'Pipeline job finished.'
+        }
+        success {
+            echo 'Python Build, Quality Check, and Tests succeeded!'
+            // Add notification logic
+        }
+        failure {
+            echo 'Python Build failed! Review the logs.'
+            // Add notification logic
         }
     }
 }

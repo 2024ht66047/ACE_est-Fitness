@@ -1,29 +1,50 @@
-{% extends "layout.html" %}
-
+{% extends "base.html" %}
+{% block title %}User Info{% endblock %}
 {% block content %}
-    <form action="{{ url_for('add_workout') }}" method="post" style="padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; background-color: #f8f9fa;">
-        <h3 style="margin-top: 0; color: #495057;">Add New Session</h3>
-
-        <div style="margin-bottom: 15px;">
-            <label for="category" style="display: block; font-weight: bold; margin-bottom: 5px;">Category:</label>
-            <select name="category" id="category" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                {% for category in categories %}
-                    <option value="{{ category }}" {% if category == 'Workout' %}selected{% endif %}>{{ category }}</option>
-                {% endfor %}
-            </select>
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <h1 class="display-5 fw-bold mt-4 text-primary text-center">📝 User Information</h1>
+        <hr>
+        <div class="card p-4 mb-4">
+            <form method="POST" action="{{ url_for('index') }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name:</label>
+                    <input type="text" class="form-control" id="name" name="name" required value="{{ user_info.name if user_info.name }}">
+                </div>
+                <div class="mb-3">
+                    <label for="regn_id" class="form-label">Regn-ID:</label>
+                    <input type="text" class="form-control" id="regn_id" name="regn_id" required value="{{ user_info.regn_id if user_info.regn_id }}">
+                </div>
+                <div class="mb-3 row">
+                    <div class="col-4">
+                        <label for="age" class="form-label">Age:</label>
+                        <input type="number" class="form-control" id="age" name="age" required value="{{ user_info.age if user_info.age }}">
+                    </div>
+                    <div class="col-4">
+                        <label for="gender" class="form-label">Gender (M/F):</label>
+                        <input type="text" class="form-control" id="gender" name="gender" required value="{{ user_info.gender if user_info.gender }}">
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <div class="col-6">
+                        <label for="height" class="form-label">Height (cm):</label>
+                        <input type="number" step="0.1" class="form-control" id="height" name="height" required value="{{ user_info.height if user_info.height }}">
+                    </div>
+                    <div class="col-6">
+                        <label for="weight" class="form-label">Weight (kg):</label>
+                        <input type="number" step="0.1" class="form-control" id="weight" name="weight" required value="{{ user_info.weight if user_info.weight }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-3">Save Info</button>
+            </form>
         </div>
-
-        <div style="margin-bottom: 15px;">
-            <label for="exercise" style="display: block; font-weight: bold; margin-bottom: 5px;">Exercise:</label>
-            <input type="text" name="exercise" id="exercise" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        
+        {% if user_info %}
+        <div class="alert alert-info p-3 mt-4 text-center">
+            <p class="h5 mb-1">Current Metrics</p>
+            <p class="mb-0">BMI: <strong>{{ user_info.bmi }}</strong> | BMR: <strong>{{ user_info.bmr }}</strong> kcal/day</p>
         </div>
-
-        <div style="margin-bottom: 20px;">
-            <label for="duration" style="display: block; font-weight: bold; margin-bottom: 5px;">Duration (min):</label>
-            <input type="number" name="duration" id="duration" required min="1" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-
-        <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">✅ Add Session</button>
-        <a href="{{ url_for('view_summary') }}" style="display: inline-block; padding: 10px 20px; margin-left: 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">📋 View Summary</a>
-    </form>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

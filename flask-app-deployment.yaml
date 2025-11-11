@@ -24,7 +24,7 @@ spec:
       containers:
       - name: aceessfitness-container
         # Replace this with your full image path (e.g., yourusername/aceessfitness:latest)
-        image: localhost/accessfitness:latest
+        image: 2024ht66047/my-image:sha-b803bce
         
         # Crucial for Minikube with a locally loaded image
         imagePullPolicy: IfNotPresent 

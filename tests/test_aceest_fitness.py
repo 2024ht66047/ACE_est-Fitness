@@ -1,4 +1,3 @@
-
 # pylint: disable=too-many-lines, line-too-long, too-many-public-methods
 # pylint: disable=too-many-instance-attributes, unused-argument, redefined-outer-name
 
@@ -34,7 +33,7 @@ class FlaskFitnessTrackerTests(unittest.TestCase):
         self.app_client.testing = True
         # CRITICAL: Clear global data before every test for isolation
         user_info.clear()
-        for category in workouts_log:
+        for category in workouts_log: # pylint: disable=consider-using-dict-items
             workouts_log[category].clear()
     def set_default_user_info(self):
         """Utility to populate necessary user info for calorie calculations."""
@@ -45,6 +44,7 @@ class FlaskFitnessTrackerTests(unittest.TestCase):
 
     def post_user_info(self, name="Test User", regn="123", age=30, gender="M", height=180, weight=75):
         """Utility for simulating user info submission."""
+        #pylint: disable=too-many-arguments, too-many-positional-arguments
         return self.app_client.post(
             '/',
             data={

@@ -1,23 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: aceessfitness-deployment-green
+  name: aceessfitness-deployment-canary
   labels:
     app: aceessfitness
-    version: green # <-- Crucial version label
+    version: canary # Canary version label
 spec:
-  replicas: 1
+  # Start with 1 replica (10% of traffic, assuming 10 total)
+  replicas: 1 
   selector:
     matchLabels:
       app: aceessfitness
       tier: frontend
-      version: green # <-- Selects green pods
+      version: canary
   template:
     metadata:
       labels:
         app: aceessfitness
         tier: frontend
-        version: green # <-- Pod version label
+        version: canary
     spec:
       containers:
       - name: aceessfitness-container

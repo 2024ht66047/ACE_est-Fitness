@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: aceessfitness-deployment-blue
+  name: aceessfitness-deployment-green
   labels:
     app: aceessfitness
-    version: blue # <-- Crucial version label
+    version: green # <-- Crucial version label
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: aceessfitness
       tier: frontend
-      version: blue # <-- Selects blue pods
+      version: green # <-- Selects green pods
   template:
     metadata:
       labels:
         app: aceessfitness
         tier: frontend
-        version: blue # <-- Pod version label
+        version: green # <-- Pod version label
     spec:
       containers:
       - name: aceessfitness-container
-        # Use your current, stable image version (V1)
-        image: 2024ht66047/my-image:sha-b803bce
+        # Update this to your NEW image version (V2)
+        image: 2024ht66047/my-image:sha-38d339d
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
